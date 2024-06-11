@@ -15,6 +15,9 @@ Server will be accessible on
 http://<YOUR_IP>:8000
 
 Endpoint usage:
+
 http://<YOUR_IP>:8000/properties/statistics - will display statistics about the data in JSON format
+
 http://<YOUR_IP>:8000/properties?bedrooms=450&bathrooms=12 - will display a JSON of properties with more than 450 bedrooms and more than 12 bathrooms
+
 http://<YOUR_IP>:8000/graphs - will generate and display graphs for data visualization
