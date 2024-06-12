@@ -1,9 +1,23 @@
 import os
-from fastapi import FastAPI, Query, HTTPException, status
-from pydantic import ValidationError, conint, constr, conlist
-from processing import calculate_statistics, filter_properties, create_graphs
+import asyncio
 import sqlite3
+import logging
+from fastapi import FastAPI, Query, HTTPException
+from pydantic import ValidationError, conint, constr
+from processing import calculate_statistics, filter_properties, create_graphs
+from ingest import ingest_csv_real_estate_data_to_db
 from fastapi.responses import HTMLResponse, FileResponse
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Read paths from environment variables
+DATA_FILE_PATH = os.getenv('DATA_FILE_PATH')
+DB_PATH = os.getenv('DB_PATH')
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
@@ -15,6 +29,9 @@ def get_properties(
     bathrooms: conint(ge=0) = Query(None, description="Minimum number of bathrooms"),
     city: constr(min_length=1, max_length=100) = Query(None, description="City name")
 ):
+    """
+    Endpoint to get properties based on filters.
+    """
     filters = {
         "price_range": (price_min, price_max) if price_min is not None and price_max is not None else None,
         "bedrooms": bedrooms,
@@ -22,7 +39,7 @@ def get_properties(
         "city": city
     }
     try:
-        properties = filter_properties('../data/properties_db.db', **filters)
+        properties = filter_properties(DB_PATH, **filters)
         return properties.to_dict(orient='records')
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
@@ -33,18 +50,24 @@ def get_properties(
 
 @app.get("/properties/statistics")
 def get_statistics():
+    """
+    Endpoint to get statistics of properties.
+    """
     try:
-        stats = calculate_statistics('../data/properties_db.db')
+        stats = calculate_statistics(DB_PATH)
         return stats
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-    
+
 @app.get("/graphs", response_class=HTMLResponse)
 def get_graphs():
+    """
+    Endpoint to generate and display graphs.
+    """
     try:
-        create_graphs('../data/properties_db.db')
+        create_graphs(DB_PATH)
         
         # HTML response with styled image embedding
         html_content = """
@@ -92,6 +115,10 @@ def get_graphs():
                 <img src="/static/price_distribution_custom.png" alt="Price Distribution">
                 <h1>Distribution of Properties by Number of Bedrooms</h1>
                 <img src="/static/bedrooms_distribution.png" alt="Bedrooms Distribution">
+                <h1>Average Property Price Over Years</h1>
+                <img src="/static/price_trend_over_years.png" alt="Price Trend Over Years">
+                <h1>Average Property Size Over Years</h1>
+                <img src="/static/size_trend_over_years.png" alt="Size Trend Over Years">                                
             </div>
         </body>
         </html>
@@ -99,10 +126,34 @@ def get_graphs():
         return HTMLResponse(content=html_content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating graphs: {str(e)}")
-    
+
 @app.get("/static/{filename}")
 def static_files(filename: str):
+    """
+    Endpoint to serve static files.
+    """
     file_path = f'../data/{filename}'
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
+
+async def periodically_run_ingest():
+    """
+    Periodically runs the ingestion process every 10 minutes.
+    """
+    while True:
+        try:
+            logging.info("Running ingestion script...")
+            ingest_csv_real_estate_data_to_db(DATA_FILE_PATH, DB_PATH)
+            logging.info("Ingestion completed.")
+        except Exception as e:
+            logging.error(f"Error during ingestion: {e}")
+        await asyncio.sleep(600)  # Wait for 10 minutes
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Schedules periodic ingestion on startup.
+    """
+    logging.info("Scheduling periodic ingestion on startup...")
+    asyncio.create_task(periodically_run_ingest())
