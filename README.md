@@ -52,6 +52,7 @@ Returns statistics in JSON format.
 
 Properties: GET /properties
 Query parameters: price_min, price_max, bedrooms, bathrooms, city
+
 Example: GET /properties?price_min=215000&price_max=220000&bedrooms=7&bathrooms=3&city=Miami
 
 Graphs: GET /graphs
@@ -61,6 +62,7 @@ Displays property data visualizations.
 Example CURL Requests
 
 curl -X GET "http://18.216.157.38/properties?price_min=210000&price_max=220000&bedrooms=5&bathrooms=3&city=Miami"
+
 curl -X GET "http://18.216.157.38/properties/statistics"
 
 
