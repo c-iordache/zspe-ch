@@ -29,17 +29,19 @@ Run server (from the src folder):
 Testing
 - run python3 -m pytest test/ from the main folder
 
-Live URL: http://18.216.157.38:8000/
+Live URL: http://18.216.157.38/
 
 Server will be accessible on
-http://<YOUR_IP>:8000
+http://<YOUR_IP>
 
 Endpoint usage:
 
-http://<YOUR_IP>:8000/properties/statistics - will display statistics about the data in JSON format
+http://18.216.157.38/properties/statistics - will display statistics about the data in JSON format
 
-http://<YOUR_IP>:8000/properties?price_min=215000&price_max=220000&bedrooms=7&bathrooms=3&city=Miami - will display a JSON of properties with the price between 215000$ and 220000$ in Miami, that have at least 7 bedrooms and at least 3 bathrooms
+http://18.216.157.38/properties?price_min=215000&price_max=220000&bedrooms=7&bathrooms=3&city=Miami - will display a JSON of properties with the price between 215000$ and 220000$ in Miami, that have at least 7 bedrooms and at least 3 bathrooms
 
-http://<YOUR_IP>:8000/graphs - will generate and display graphs for data visualization
+http://18.216.157.38/graphs - will generate and display graphs for data visualization
 
-Example CURL request: curl -X GET "http://18.216.157.38:8000/properties?price_min=210000&price_max=220000&bedrooms=5&bathrooms=3&city=Miami"
+Example CURL request: curl -X GET "http://18.216.157.38/properties?price_min=210000&price_max=220000&bedrooms=5&bathrooms=3&city=Miami"
+
+curl -X GET "http://18.216.157.38/properties/statistics"
