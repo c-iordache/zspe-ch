@@ -4,12 +4,19 @@ Installation
 
 Pre-requisite:
 - python3 (3.12 used for demo)
-- pip3 (if not installed, install with "sudo apt-get install python3-pip)
+- pip3 (if not installed, install with "sudo apt-get install python3-pip")
+- virtualenv: sudo pip3 install virtualenv
+- set up virtualenv: python3 -m venv venv
+- run virtualenv: source venv/bin/activate
 - pip3 install -r requirements.txt
+- pip3 install hypercorn
 
 Run server:
 - cd src
 - hypercorn fast_api:app --reload --bind 0.0.0.0:8000
+
+Testing
+- run python3 -m pytest test/ from the main folder
 
 Live URL: http://18.216.157.38:8000/
 
