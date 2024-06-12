@@ -11,6 +11,8 @@ Run server:
 - cd src
 - hypercorn fast_api:app --reload --bind 0.0.0.0:8000
 
+Live URL: http://18.216.157.38:8000/
+
 Server will be accessible on
 http://<YOUR_IP>:8000
 
