@@ -18,6 +18,6 @@ Endpoint usage:
 
 http://<YOUR_IP>:8000/properties/statistics - will display statistics about the data in JSON format
 
-http://<YOUR_IP>:8000/properties?bedrooms=450&bathrooms=12 - will display a JSON of properties with more than 450 bedrooms and more than 12 bathrooms
+http://<YOUR_IP>:8000/properties?price_min=215000&price_max=220000&bedrooms=7&bathrooms=3&city=Miami - will display a JSON of properties with the price between 215000$ and 220000$ in Miami, that have at least 7 bedrooms and at least 3 bathrooms
 
 http://<YOUR_IP>:8000/graphs - will generate and display graphs for data visualization
