@@ -6,7 +6,7 @@ from fastapi import FastAPI, Query, HTTPException
 from pydantic import ValidationError, conint, constr
 from processing import calculate_statistics, filter_properties, create_graphs
 from ingest import ingest_csv_real_estate_data_to_db
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -20,6 +20,13 @@ DB_PATH = os.getenv('DB_PATH')
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
+
+@app.get("/", response_class=PlainTextResponse)
+def root():
+    """
+    Root endpoint that shows a welcome message.
+    """
+    return "Welcome to the Zoomprop demo"
 
 @app.get("/properties")
 def get_properties(
