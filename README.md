@@ -19,6 +19,7 @@ Pre-requisite:
 - create a .env file in the src folder (by default it is:
   
 DATA_FILE_PATH=../data/zoomprop_data_engineering.csv
+
 DB_PATH=../data/properties_db.db
 
 
