@@ -1,5 +1,8 @@
 Zoomprop Real Estate Data Processing
 
+Live URL
+http://18.216.157.38/
+
 Installation
 - Pre-requisites
   Python: Ensure python3 (3.12) is installed.
@@ -59,5 +62,6 @@ Example CURL Requests
 
 curl -X GET "http://18.216.157.38/properties?price_min=210000&price_max=220000&bedrooms=5&bathrooms=3&city=Miami"
 curl -X GET "http://18.216.157.38/properties/statistics"
-Live URL
-http://18.216.157.38/
+
+
+
