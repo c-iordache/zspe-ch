@@ -45,14 +45,14 @@ This is a real estate data processing application that ingests data from a CSV f
    ```bash
    DATA_FILE_PATH=../data/zoomprop_data_engineering.csv
    DB_PATH=../data/properties_db.db
-
+   ```
 ## Usage
 
 ### Run the server
   Run the server from the src folder:
   ```bash
   hypercorn fast_api:app --reload --bind 0.0.0.0:8000
-
+  ```
   Access the server at http://<YOUR_IP>.
 
   Make sure to replace <YOUR_IP> with your server's actual IP address.
@@ -61,7 +61,7 @@ This is a real estate data processing application that ingests data from a CSV f
   Run tests from the main folder:
   ```bash
   python3 -m pytest test/
-
+  ```
 ## Endpoints
 - Statistics: GET /properties/statistics
   -- Returns statistics in JSON format.
