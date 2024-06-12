@@ -77,6 +77,9 @@ This is a real estate data processing application that ingests data from a CSV f
   curl -X GET "http://18.216.157.38/properties?price_min=210000&price_max=220000&bedrooms=5&bathrooms=3&city=Miami"
 
   curl -X GET "http://18.216.157.38/properties/statistics"
+   ```
+
+In a browser, go to [http://18.216.157.38/graphs](http://18.216.157.38/graphs)
 
 
 
