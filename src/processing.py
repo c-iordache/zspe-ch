@@ -1,22 +1,23 @@
 import sqlite3
+import logging
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import sys
 
-def calculate_statistics(db_path):
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def calculate_statistics(db):
     try:
-        conn = sqlite3.connect(db_path)
-        query = 'SELECT * FROM listings'
-        df = pd.read_sql(query, conn)
-        conn.close()
-
+        conn = db if isinstance(db, sqlite3.Connection) else sqlite3.connect(os.path.abspath(db))
+        df = pd.read_sql('SELECT * FROM listings', conn)
+        
         if df.empty:
-            print("No data found in the database.")
-            return None
+            logging.info("No data found in the database.")
+            return {}
 
-        # Calculate basic statistics
         stats = {
             'average_property_price': int(df['price'].mean()),
             'median_property_price': int(df['price'].median()),
@@ -25,102 +26,102 @@ def calculate_statistics(db_path):
         }
 
         df.replace([pd.NaT, float('inf'), float('-inf')], pd.NA, inplace=True)
-        df.fillna(value=0, inplace=True)           
+        df.fillna(value=0, inplace=True)
 
-        # Convert price, bedrooms, bathrooms, and squarefeet to int
         df['price'] = df['price'].astype(int)
         df['bedrooms'] = df['bedrooms'].astype(int)
         df['bathrooms'] = df['bathrooms'].astype(int)
         df['squarefeet'] = df['squarefeet'].astype(int)
 
-        # Ensure datelisted is a non-empty string
-        df['datelisted'] = df['datelisted'].apply(lambda x: x if x else "")        
-
-        # Detect outliers using IQR
-        Q1 = df['price'].quantile(0.25)
-        Q3 = df['price'].quantile(0.75)
+        Q1, Q3 = df['price'].quantile([0.25, 0.75])
         IQR = Q3 - Q1
         threshold = 1.5
 
         lower_outliers = df[df['price'] < (Q1 - threshold * IQR)]
         higher_outliers = df[df['price'] > (Q3 + threshold * IQR)]
+        outliers = pd.concat([lower_outliers, higher_outliers])
 
-        stats['lower_outliers_count'] = lower_outliers.shape[0]
-        stats['higher_outliers_count'] = higher_outliers.shape[0]
+        stats['outliers_count'] = outliers.shape[0]
+        stats['outliers'] = outliers.to_dict(orient='records')
+        logging.info("Total outliers: %d", outliers.shape[0])
 
-        stats['lower_outliers'] = lower_outliers.to_dict(orient='records')
-        stats['higher_outliers'] = higher_outliers.to_dict(orient='records')
-
-        print("Lower priced outliers:", lower_outliers.shape[0])
-        print("Higher priced outliers:", higher_outliers.shape[0])
-
-        #outliers = df[(df['price'] < (Q1 - threshold * IQR)) | (df['price'] > (Q3 + threshold * IQR))]
-
-        #stats['outliers_count'] = outliers.shape[0]
-        #print("outliers ", outliers.shape[0])
-        #stats['outliers'] = outliers.to_dict(orient='records')
-        #print("outl ",outliers.to_dict(orient='records'))
         return stats
-
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
-        return None
+        logging.error("Database error: %s", e)
+        raise
     except Exception as e:
-        print(f"Unexpected error: {e}")
-        return None
+        logging.error("Unexpected error: %s", e)
+        raise
+    finally:
+        if not isinstance(db, sqlite3.Connection):
+            conn.close()
 
-def filter_properties(db_path, price_range=None, bedrooms=None, bathrooms=None, city=None):
+def filter_properties(db, price_range=None, bedrooms=None, bathrooms=None, city=None):
     try:
-        conn = sqlite3.connect(db_path)
+        conn = db if isinstance(db, sqlite3.Connection) else sqlite3.connect(os.path.abspath(db))
         query = 'SELECT * FROM listings WHERE 1=1'
+        params = []
 
         if price_range:
-            query += f' AND price BETWEEN {price_range[0]} AND {price_range[1]}'
+            query += ' AND price BETWEEN ? AND ?'
+            params.extend(price_range)
         if bedrooms:
-            query += f' AND bedrooms >= {bedrooms}'
+            query += ' AND bedrooms >= ?'
+            params.append(bedrooms)
         if bathrooms:
-            query += f' AND bathrooms >= {bathrooms}'
+            query += ' AND bathrooms >= ?'
+            params.append(bathrooms)
         if city:
-            query += f' AND city = "{city}"'
+            query += ' AND city = ?'
+            params.append(city)
 
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(query, conn, params=params)
+        
+        if not isinstance(db, sqlite3.Connection):
+            conn.close()
 
-        # Replace NaN and infinite values
         df.replace([pd.NaT, float('inf'), float('-inf')], pd.NA, inplace=True)
-        df.fillna(value=0, inplace=True)   
-
-        # Convert price, bedrooms, bathrooms, and squarefeet to int
+        df.fillna(value=0, inplace=True)
+        df = df.infer_objects(copy=False)
         df['price'] = df['price'].astype(int)
         df['bedrooms'] = df['bedrooms'].astype(int)
         df['bathrooms'] = df['bathrooms'].astype(int)
         df['squarefeet'] = df['squarefeet'].astype(int)
-
-        # Ensure DateListed is a non-empty string
         df['datelisted'] = df['datelisted'].apply(lambda x: x if x else "")
 
-        conn.close()
-
         if df.empty:
-            print("No matching properties found.")
+            logging.info("No matching properties found.")
         return df
-
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        logging.error("Database error: %s", e)
         return pd.DataFrame()
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        logging.error("Unexpected error: %s", e)
         return pd.DataFrame()
-    
-def create_graphs(db_path):
+
+def create_graphs(db):
+    """
+    Creates and saves graphs for property data.
+
+    Parameters:
+    db (str or sqlite3.Connection): Path to the SQLite database file or an SQLite connection object.
+    """
     try:
-        conn = sqlite3.connect(db_path)
+        # Use provided connection or create a new one
+        if isinstance(db, sqlite3.Connection):
+            conn = db
+        else:
+            conn = sqlite3.connect(os.path.abspath(db))
+        
         query = 'SELECT * FROM listings'
         df = pd.read_sql(query, conn)
-        conn.close()
+        
+        if not isinstance(db, sqlite3.Connection):
+            conn.close()
 
         if df.empty:
-            print("No data found in the database.")
-            return None
+            logging.info("No data found in the database.")
+            return
 
         sns.set(style="whitegrid")
 
@@ -128,9 +129,13 @@ def create_graphs(db_path):
         df['price'] = df['price'].replace([np.inf, -np.inf], np.nan).fillna(0)
         price_log_bins = np.logspace(np.log10(df['price'][df['price'] > 0].min()), np.log10(df['price'].max()), 20)
 
+        os.makedirs('../data', exist_ok=True)
+
+        # Distribution of Property Prices (Log Scale)
         plt.figure(figsize=(10, 6))
         sns.histplot(df['price'], bins=price_log_bins, kde=True, color='skyblue')
         plt.xscale('log')
+        plt.gca().get_xaxis().set_major_formatter(plt.FuncFormatter(lambda x, _: '{:,.0f}'.format(x)))
         plt.title('Distribution of Property Prices (Log Scale)')
         plt.xlabel('Price')
         plt.ylabel('Frequency')
@@ -144,12 +149,14 @@ def create_graphs(db_path):
             '500k-1M$', '1M-5M$', '5M-10M$', '10M+$'
         ], include_lowest=True)
 
+        # Distribution of Property Prices
         plt.figure(figsize=(10, 6))
-        sns.countplot(x='price_binned', data=df, palette='muted')
+        sns.countplot(x='price_binned', data=df, palette='muted', hue='price_binned', dodge=False)
         plt.title('Distribution of Property Prices')
         plt.xlabel('Price Range')
         plt.ylabel('Count')
         plt.xticks(rotation=45, ha='right')
+        plt.legend([], [], frameon=False)  # Hide the legend
         plt.tight_layout(pad=2.0)
         plt.savefig('../data/price_distribution_custom.png')
         plt.close()
@@ -158,26 +165,41 @@ def create_graphs(db_path):
         df['bedrooms_limited'] = df['bedrooms'].apply(lambda x: '10+' if x > 10 else str(int(x) if not pd.isna(x) else 0))
         df['bedrooms_limited'] = pd.Categorical(df['bedrooms_limited'], categories=[str(i) for i in range(11)] + ['10+'])
 
+        # Distribution of Properties by Number of Bedrooms
         plt.figure(figsize=(10, 6))
-        sns.countplot(x='bedrooms_limited', data=df, palette='muted', order=[str(i) for i in range(11)] + ['10+'])
+        sns.countplot(x='bedrooms_limited', data=df, palette='muted', hue='bedrooms_limited', dodge=False, order=[str(i) for i in range(11)] + ['10+'])
         plt.title('Distribution of Properties by Number of Bedrooms')
         plt.xlabel('Number of Bedrooms')
         plt.ylabel('Count')
+        plt.legend([], [], frameon=False)  # Hide the legend
         plt.savefig('../data/bedrooms_distribution.png')
         plt.close()
 
-    except Exception as e:
-        print(f"Error creating graphs: {e}")
-    
-if __name__ == "__main__":
-    try:
-        db_path = '../data/properties_db.db'
-        stats = calculate_statistics(db_path)
-        if stats:
-            print(stats)
-        else:
-            print("Statistics could not be calculated.")
+        # Trend analysis based on datelisted
+        df['datelisted'] = pd.to_datetime(df['datelisted'], errors='coerce')
+        df = df.dropna(subset=['datelisted'])
+        df['year'] = df['datelisted'].dt.year
+
+        # Average Property Price Over Years
+        plt.figure(figsize=(10, 6))
+        sns.lineplot(data=df, x='year', y='price', estimator='mean', ci=None, marker='o', color='skyblue')
+        plt.gca().get_yaxis().set_major_formatter(plt.FuncFormatter(lambda x, _: '${:,.0f}'.format(x).replace('1000', '1k')))
+        plt.title('Average Property Price Over Years')
+        plt.xlabel('Year')
+        plt.ylabel('Average Price')
+        plt.grid(True)
+        plt.savefig('../data/price_trend_over_years.png')
+        plt.close()
+
+        # Average Property Size Over Years
+        plt.figure(figsize=(10, 6))
+        sns.lineplot(data=df, x='year', y='squarefeet', estimator='mean', ci=None, marker='o', color='skyblue')
+        plt.title('Average Property Size Over Years')
+        plt.xlabel('Year')
+        plt.ylabel('Average Square Feet')
+        plt.grid(True)
+        plt.savefig('../data/size_trend_over_years.png')
+        plt.close()
 
     except Exception as e:
-        print(f"Error in main execution: {e}")
-        sys.exit(1)
+        logging.error("Error creating graphs: %s", e)
