@@ -30,3 +30,5 @@ http://<YOUR_IP>:8000/properties/statistics - will display statistics about the 
 http://<YOUR_IP>:8000/properties?price_min=215000&price_max=220000&bedrooms=7&bathrooms=3&city=Miami - will display a JSON of properties with the price between 215000$ and 220000$ in Miami, that have at least 7 bedrooms and at least 3 bathrooms
 
 http://<YOUR_IP>:8000/graphs - will generate and display graphs for data visualization
+
+Example CURL request: curl -X GET "http://18.216.157.38:8000/properties?price_min=210000&price_max=220000&bedrooms=5&bathrooms=3&city=Miami"
