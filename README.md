@@ -67,6 +67,7 @@ This is a real estate data processing application that ingests data from a CSV f
   -- Returns statistics in JSON format.
 - Properties: GET /properties
   -- Query parameters: price_min, price_max, bedrooms, bathrooms, city
+  
   -- Example: GET /properties?price_min=215000&price_max=220000&bedrooms=7&bathrooms=3&city=Miami
 - Graphs: GET /graphs
   -- Displays property data visualizations
